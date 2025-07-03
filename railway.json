@@ -1,0 +1,12 @@
+{
+  "build": {
+    "env": {
+      "PLAYWRIGHT_BROWSERS_PATH": "0"
+    }
+  },
+  "deploy": {
+    "startCommand": "python glaze-reviews.py",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
