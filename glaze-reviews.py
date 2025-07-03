@@ -1,41 +1,35 @@
-import json
-from playwright.sync_api import sync_playwright
+name: Scrape Yandex Reviews
 
-YANDEX_URL = "https://yandex.ru/maps/org/glaze/194103090849/"
+on:
+  schedule:
+    - cron: "0 3 * * *"  # Каждый день в 3:00 утра по UTC
+  workflow_dispatch:
 
-def scrape_reviews():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(YANDEX_URL, timeout=60000)
-        page.wait_for_timeout(5000)
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
 
-        for _ in range(5):
-            page.mouse.wheel(0, 500)
-            page.wait_for_timeout(1500)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-        reviews = []
-        blocks = page.query_selector_all('[data-testid="review-card"]')
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
 
-        for block in blocks:
-            try:
-                name = block.query_selector('[data-testid="reviewer-name"]').inner_text()
-                rating = int(block.query_selector('[data-testid="rating"]').get_attribute("aria-label")[0])
-                text = block.query_selector('[data-testid="review-text"]').inner_text()
-                date = block.query_selector('[data-testid="review-date"]').inner_text()
-                reviews.append({
-                    "name": name,
-                    "rating": rating,
-                    "text": text,
-                    "date": date
-                })
-            except Exception:
-                continue
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium
 
-        browser.close()
+      - name: Run scraper
+        run: python glaze-reviews.py
 
-        with open("reviews.json", "w", encoding="utf-8") as f:
-            json.dump(reviews, f, ensure_ascii=False, indent=2)
-
-if __name__ == "__main__":
-    scrape_reviews()
+      - name: Commit and push reviews.json
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add reviews.json
+          git commit -m "Update reviews" || echo "No changes to commit"
+          git push
